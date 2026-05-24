@@ -1,0 +1,67 @@
+name: Python CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  # --- CONTINUOUS INTEGRATION (CI) STAGE ---
+  continuous-integration:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-style: '3.10'
+
+    - name: Install Testing Dependencies
+      run: pip install pytest
+
+    - name: Run Tests
+      run: pytest main.py
+
+    - name: Notify Telegram on CI Status
+      if: always() # Sends message even if tests fail
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_TO }}
+        token: ${{ secrets.TELEGRAM_TOKEN }}
+        message: |
+          🚀 CI Pipeline Status: ${{ job.status }}
+          Repository: ${{ github.repository }}
+          Commit: ${{ github.event.head_commit.message }}
+
+  # --- CONTINUOUS DEPLOYMENT (CD) STAGE ---
+  continuous-deployment:
+    needs: continuous-integration # Only runs if CI passes
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Deploy to DigitalOcean Droplet via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DO_HOST }}
+        username: root
+        key: ${{ secrets.DO_SSH_KEY }}
+        script: |
+          # 1. Clean up old code folder if it exists
+          rm -rf /root/git-action-simulator
+          
+          # 2. Clone the fresh code directly to the server
+          git clone https://github.com{{ github.repository }}.git /root/git-action-simulator
+          cd /root/git-action-simulator
+          
+          # 3. Stop running containers, build the fresh image, and run it
+          docker stop python-app-container || true
+          docker rm python-app-container || true
+          docker build -t my-python-image .
+          docker run -d --name python-app-container my-python-image
+          
+          # 4. Show the printed lines in logs
+          sleep 2
+          docker logs python-app-container

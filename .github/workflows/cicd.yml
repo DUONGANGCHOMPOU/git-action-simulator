@@ -55,8 +55,8 @@ jobs:
 
           cd /root/git-action-simulator
 
-          docker build -t my-python-image-1 .
-          docker run -d --name python-app-container my-python-image-1
+          docker build -t my-python-image-2 .
+          docker run -d --name python-app-container-2 my-python-image-2
 
           sleep 2
-          docker logs python-app-container
+          docker logs python-app-container-2

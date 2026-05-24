@@ -15,16 +15,16 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-style: '3.10'
+        python-version: '3.10'          # Fix 1: was 'python-style'
 
     - name: Install Testing Dependencies
       run: pip install pytest
 
     - name: Run Tests
-      run: pytest main.py
+      run: pytest main.py -v            # Fix 2: -v for verbose output
 
     - name: Notify Telegram on CI Status
-      if: always() # Sends message even if tests fail
+      if: always()
       uses: appleboy/telegram-action@master
       with:
         to: ${{ secrets.TELEGRAM_TO }}
@@ -36,7 +36,7 @@ jobs:
 
   # --- CONTINUOUS DEPLOYMENT (CD) STAGE ---
   continuous-deployment:
-    needs: continuous-integration # Only runs if CI passes
+    needs: continuous-integration
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
@@ -49,19 +49,16 @@ jobs:
         username: root
         key: ${{ secrets.DO_SSH_KEY }}
         script: |
-          # 1. Clean up old code folder if it exists
           rm -rf /root/git-action-simulator
-          
-          # 2. Clone the fresh code directly to the server
-          git clone https://github.com{{ github.repository }}.git /root/git-action-simulator
+
+          git clone https://github.com/${{ github.repository }}.git /root/git-action-simulator   # Fix 3: added $ and /
+
           cd /root/git-action-simulator
-          
-          # 3. Stop running containers, build the fresh image, and run it
+
           docker stop python-app-container || true
           docker rm python-app-container || true
           docker build -t my-python-image .
           docker run -d --name python-app-container my-python-image
-          
-          # 4. Show the printed lines in logs
+
           sleep 2
           docker logs python-app-container

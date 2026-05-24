@@ -15,13 +15,13 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'          # Fix 1: was 'python-style'
+        python-version: '3.10'
 
     - name: Install Testing Dependencies
       run: pip install pytest
 
     - name: Run Tests
-      run: pytest main.py -v            # Fix 2: -v for verbose output
+      run: pytest main.py -v
 
     - name: Notify Telegram on CI Status
       if: always()
@@ -49,14 +49,19 @@ jobs:
         username: root
         key: ${{ secrets.DO_SSH_KEY }}
         script: |
+          # 1. Pull fresh code
           rm -rf /root/git-action-simulator
-
-          git clone https://github.com/${{ github.repository }}.git /root/git-action-simulator   # Fix 3: added $ and /
-
+          git clone https://github.com/${{ github.repository }}.git /root/git-action-simulator
           cd /root/git-action-simulator
 
-          docker build -t my-python-image-2 .
-          docker run -d --name python-app-container-2 my-python-image-2
+          # 2. Clean up old container and image
+          docker stop python-app-container || true
+          docker rm python-app-container || true
+          docker rmi my-python-image || true
 
-          sleep 2
-          docker logs python-app-container-2
+          # 3. Build fresh image on server
+          docker build -t my-python-image .
+
+          # 4. Run container and show logs
+          docker run --name python-app-container my-python-image
+          docker logs python-app-container

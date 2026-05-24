@@ -55,8 +55,6 @@ jobs:
 
           cd /root/git-action-simulator
 
-          docker stop python-app-container || true
-          docker rm python-app-container || true
           docker build -t my-python-image .
           docker run -d --name python-app-container my-python-image
 
